@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quick Poll Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ---- settings -------------------------------------------------------
+     CSV_URL (near real-time, recommended): Apps Script web app URL ending in /exec,
+              see poll/apps_script.gs
+     CSV_URL (simpler, updates can lag a few minutes): Google Sheets > File > Share > Publish to web >
+              (form responses sheet) > Comma-separated values (.csv) > Publish
+     Leave empty (or open with ?demo) to show sample data. */
+  :root{
+    --navy:#0B1F3A; --deep:#071528; --panel:#102a4c; --line:#1d3b63;
+    --sky:#1FA7E1; --pink:#BF6A8B; --blue:#3D7BE0; --ice:#B2CBE5; --muted:#7f95b3; --white:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:radial-gradient(1200px 700px at 85% -10%,#173a6a 0%,var(--deep) 55%) fixed,var(--deep);
+       color:var(--white);font-family:Inter,Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1500px;margin:0 auto;padding:40px 56px 32px;min-height:100%;display:flex;flex-direction:column}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:34px}
+  .kicker{color:var(--sky);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:15px}
+  h1{font-size:44px;font-weight:800;letter-spacing:-.02em;margin-top:6px}
+  .count{text-align:right}
+  .count b{display:block;font-size:64px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .count span{color:var(--muted);font-size:15px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;flex:1}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid var(--line);
+        border-radius:20px;padding:28px 28px 24px;display:flex;flex-direction:column}
+  .tag{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;
+       background:var(--navy);border:1px solid var(--line);color:var(--sky);font-weight:700;font-size:16px}
+  .q{font-size:22px;font-weight:700;line-height:1.3;margin:16px 0 6px;min-height:88px}
+  .hint{color:var(--pink);font-size:14px;font-weight:600;min-height:20px;margin-bottom:18px}
+  .rows{display:flex;flex-direction:column;gap:20px;margin-top:22px}
+  .row .lab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:19px}
+  .row .lab .n{color:var(--ice);font-variant-numeric:tabular-nums;font-size:17px}
+  .row .lab .n b{color:var(--white);font-size:22px;margin-right:6px}
+  .bar{height:16px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
+  .fill{height:100%;width:0;border-radius:999px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  footer{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:26px}
+  .live{display:inline-flex;align-items:center;gap:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#3ddc97;box-shadow:0 0 0 0 rgba(61,220,151,.6);animation:p 2s infinite}
+  .demo .dot{background:#f2b84b;animation:none}
+  @keyframes p{70%{box-shadow:0 0 0 10px rgba(61,220,151,0)}100%{box-shadow:0 0 0 0 rgba(61,220,151,0)}}
+  @media (max-width:1000px){.grid{grid-template-columns:1fr}.wrap{padding:24px 16px}h1{font-size:32px}.count b{font-size:44px}.q{min-height:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="kicker">Quick Poll</div>
+      <h1>Who is in the room?</h1>
+    </div>
+    <div class="count"><b id="total">0</b><span>responses</span></div>
+  </header>
+  <section class="grid" id="grid"></section>
+  <footer>
+    <span class="live" id="status"><i class="dot"></i><span id="statusText">Waiting for data</span></span>
+    <span id="updated"></span>
+  </footer>
+</div>
+<script>
+const CSV_URL = "https://script.google.com/macros/s/AKfycbwloPKLTwp8bLWGAz0aF8VbN8qaZHR4ltsAUVWrJxT0bk9KBcUFQG5Zvd5cT7QfYD0m/exec";            // Apps Script /exec URL or published CSV link
+const REFRESH_SEC = 1;
+
+// Column order in the response sheet: Timestamp, Q1, Q2, Q3 (Google Forms default)
+const QUESTIONS = [
+  { tag: "Q1", text: "Have you worked with mass spectrometry (LC-MS) data?", col: 1, multi: false,
+    options: ["Never", "Received results", "Analyzed myself"], color: "var(--sky)" },
+  { tag: "Q2", text: "Have you worked with transcriptomics (RNA-seq, scRNA-seq) results?", col: 2, multi: false,
+    options: ["Never", "Received results", "Analyzed myself"], color: "var(--blue)" },
+  { tag: "Q3", text: "Coding experience?", col: 3, multi: true, hint: "Select all that apply",
+    options: ["R", "Python", "Other", "None"], color: "var(--pink)" },
+];
+
+const grid = document.getElementById("grid");
+QUESTIONS.forEach((q, i) => {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<span class="tag">${q.tag}</span><div class="q"></div><div class="hint"></div><div class="rows"></div>`;
+  card.querySelector(".q").textContent = q.text;
+  card.querySelector(".hint").textContent = q.hint || "";
+  const rows = card.querySelector(".rows");
+  q.options.forEach(o => {
+    const r = document.createElement("div");
+    r.className = "row";
+    r.innerHTML = `<div class="lab"><span class="o"></span><span class="n"><b>0</b><span class="p">0%</span></span></div><div class="bar"><div class="fill"></div></div>`;
+    r.querySelector(".o").textContent = o;
+    r.querySelector(".fill").style.background = q.color;
+    rows.appendChild(r);
+  });
+  grid.appendChild(card);
+});
+
+// minimal CSV parser (handles quotes, commas and newlines inside quotes)
+function parseCSV(t) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && t[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+
+function tally(records) {
+  return QUESTIONS.map(q => {
+    const counts = q.options.map(() => 0);
+    let answered = 0;
+    records.forEach(r => {
+      const v = (r[q.col] || "").trim();
+      if (!v) return;
+      answered++;
+      const picks = q.multi ? v.split(/,\s*/) : [v];
+      picks.forEach(p => { const k = q.options.findIndex(o => o.toLowerCase() === p.trim().toLowerCase()); if (k >= 0) counts[k]++; });
+    });
+    return { counts, answered };
+  });
+}
+
+function render(records, mode) {
+  document.getElementById("total").textContent = records.length;
+  tally(records).forEach((t, i) => {
+    const card = grid.children[i];
+    [...card.querySelectorAll(".row")].forEach((r, k) => {
+      const n = t.counts[k], pct = t.answered ? Math.round(n / t.answered * 100) : 0;
+      r.querySelector(".n b").textContent = n;
+      r.querySelector(".p").textContent = pct + "%";
+      r.querySelector(".fill").style.width = pct + "%";
+    });
+  });
+  document.getElementById("statusText").textContent = mode === "demo" ? "Sample data (no CSV link set)" : "Live";
+  document.getElementById("status").classList.toggle("demo", mode === "demo");
+  document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString();
+}
+
+function demoData() {
+  const pick = (opts, w) => { let x = Math.random() * w.reduce((a, b) => a + b), k = 0; while ((x -= w[k]) > 0) k++; return opts[k]; };
+  return Array.from({ length: 42 }, () => {
+    const q3 = ["R", "Python", "Other", "None"].filter((_, k) => Math.random() < [0.45, 0.3, 0.08, 0][k]);
+    return ["", pick(QUESTIONS[0].options, [6, 3, 1]), pick(QUESTIONS[1].options, [3, 4, 3]), (q3.length ? q3 : ["None"]).join(", ")];
+  });
+}
+
+let busy = false;
+async function load() {
+  if (busy) return;                     // skip while the previous request is still running
+  const demo = !CSV_URL || new URLSearchParams(location.search).has("demo");
+  if (demo) { render(demoData(), "demo"); return; }
+  busy = true;
+  try {
+    const res = await fetch(CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
+    const text = await res.text();
+    if (text.trim().startsWith("<")) {
+      document.getElementById("statusText").textContent = "Link returned a web page, not data: set web app access to Anyone";
+      return;
+    }
+    const rows = parseCSV(text);
+    if (new URLSearchParams(location.search).has("debug")) console.log(text.slice(0, 2000));
+    render(rows.slice(1), "live");
+  } catch (e) {
+    document.getElementById("statusText").textContent = "Could not load responses (" + (e && e.message ? e.message : e) + "), retrying " + new Date().toLocaleTimeString();
+  } finally {
+    busy = false;
+  }
+}
+load();
+if (CSV_URL) setInterval(load, REFRESH_SEC * 1000);
+</script>
+</body>
+</html>
