@@ -24,7 +24,7 @@ Download the files from the `data/` folder (click a file, then the download butt
 
 ### Code track (Google Colab)
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ORG/REPO/blob/main/hands_on_diet_liver.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hyungwookc07/msdata-workshop/blob/main/hands_on_diet_liver.ipynb)
 
 1. Click the badge above. A Google account is required; nothing to install.
 2. Run the cells from top to bottom with `Shift + Enter`. No coding needed.
@@ -90,7 +90,7 @@ The paper used a three-group limma model in R with imputation, so individual num
 ## Notes
 
 - The notebook reads data from this repository, so it runs the same way for everyone.
-- If g:Profiler or STRING cannot be reached during the session, the notebook loads saved results from `data/backup/`.
+- The ORA and STRING sections call the g:Profiler and STRING servers. If a server is busy, wait a moment and run the cell again, or use the web track.
 - Plot labels in the notebook are in English because Colab has no Korean font by default.
 
 ## References

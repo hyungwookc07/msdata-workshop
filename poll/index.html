@@ -66,7 +66,7 @@
 </div>
 <script>
 const CSV_URL = "https://script.google.com/macros/s/AKfycbwloPKLTwp8bLWGAz0aF8VbN8qaZHR4ltsAUVWrJxT0bk9KBcUFQG5Zvd5cT7QfYD0m/exec";            // Apps Script /exec URL or published CSV link
-const REFRESH_SEC = 8;
+const REFRESH_SEC = 1;
 
 // Column order in the response sheet: Timestamp, Q1, Q2, Q3 (Google Forms default)
 const QUESTIONS = [
@@ -138,7 +138,7 @@ function render(records, mode) {
       r.querySelector(".fill").style.width = pct + "%";
     });
   });
-  document.getElementById("statusText").textContent = mode === "demo" ? "Sample data (no CSV link set)" : "Live, refreshes every " + REFRESH_SEC + " s";
+  document.getElementById("statusText").textContent = mode === "demo" ? "Sample data (no CSV link set)" : "Live";
   document.getElementById("status").classList.toggle("demo", mode === "demo");
   document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString();
 }
@@ -151,9 +151,12 @@ function demoData() {
   });
 }
 
+let busy = false;
 async function load() {
+  if (busy) return;                     // skip while the previous request is still running
   const demo = !CSV_URL || new URLSearchParams(location.search).has("demo");
   if (demo) { render(demoData(), "demo"); return; }
+  busy = true;
   try {
     const res = await fetch(CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
     const text = await res.text();
@@ -162,9 +165,12 @@ async function load() {
       return;
     }
     const rows = parseCSV(text);
+    if (new URLSearchParams(location.search).has("debug")) console.log(text.slice(0, 2000));
     render(rows.slice(1), "live");
   } catch (e) {
-    document.getElementById("statusText").textContent = "Could not load responses, retrying";
+    document.getElementById("statusText").textContent = "Could not load responses (" + (e && e.message ? e.message : e) + "), retrying " + new Date().toLocaleTimeString();
+  } finally {
+    busy = false;
   }
 }
 load();
