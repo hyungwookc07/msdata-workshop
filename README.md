@@ -51,6 +51,21 @@ Download the files from the `data/` folder (click a file, then the download butt
 
 These match Fig. 4A of the paper. At FDR < 0.05 without a fold-change cutoff, we find 204 proteins (paper: 200).
 
+## Going further: from search results to DE
+
+This tutorial starts from a ready-made DE table. To build the protein matrix and run the preprocessing and DE steps yourself, see **msmu**, a Python toolkit for modular and traceable LC-MS proteomics analysis built on [MuData](https://mudata.readthedocs.io).
+
+- Reads search results from MaxQuant, FragPipe, DIA-NN and Sage into one standardized container
+- Filtering, normalization, batch correction, and PSM → peptide → protein summarization with protein inference and FDR control
+- Differential expression, PCA and interactive QC plots; all parameters and logs are kept in a single file
+- Works with scverse tools (scanpy, muon)
+
+| | |
+|---|---|
+| GitHub | [bertis-informatics/msmu](https://github.com/bertis-informatics/msmu) |
+| Documentation | [bertis-informatics.github.io/msmu](https://bertis-informatics.github.io/msmu/) |
+| Install | `pip install msmu` |
+
 ## Data
 
 Small L, et al. Liver proteomics identifies a disconnect between proteins associated with de novo lipogenesis and triglyceride storage. *J Lipid Res*. 2024;65:100687. PRIDE: PXD054323.
@@ -101,3 +116,4 @@ The paper used a three-group limma model in R with imputation, so individual num
 - Kolberg L, et al. g:Profiler: interoperable web service for functional enrichment analysis and gene identifier mapping (2023 update). *Nucleic Acids Res*. 2023;51:W207–W212.
 - Szklarczyk D, et al. The STRING database in 2023. *Nucleic Acids Res*. 2023;51:D638–D646.
 - Fang Z, et al. GSEApy: a comprehensive package for performing gene set enrichment analysis in Python. *Bioinformatics*. 2023;39:btac757.
+- Choi HW, Lee B, Kang UB, Huh S. msmu: a Python toolkit for modular and traceable LC-MS proteomics data analysis based on MuData. *bioRxiv*. 2026. doi:10.64898/2026.01.07.698308
