@@ -5,7 +5,7 @@ Starting from differential expression (DE) results of a mouse liver proteome, yo
 
 **Dataset**: high-fat diet (HFD) vs high-starch diet (HSD), mouse liver, label-free DDA (MaxLFQ). Small et al., *J Lipid Res* 2024.
 
-**Slides**: `slides/` (PDF, uploaded after the workshop)
+**Slides**: [`slides/Bertis_Proteomics_Tutorial.pptx`](slides/Bertis_Proteomics_Tutorial.pptx)
 
 ## Quick start
 
@@ -85,7 +85,7 @@ The paper used a three-group limma model in R with imputation, so individual num
 | `data/ranked_list.rnk` | GSEA ranked list: gene and limma t (two columns, no header) |
 | `data/genesets/GO_BP_mouse.gmt` | GO Biological Process gene sets for mouse (MSigDB C5 GO:BP v7.5.1, mouse orthologs; built with `scripts/make_go_bp_gmt.py`) |
 | `figures/` | Volcano plot (HFD vs HSD) and the vs-chow comparison |
-| `slides/` | Workshop slides (PDF) |
+| `slides/Bertis_Proteomics_Tutorial.pptx` | Tutorial slides: bioinformatics analysis for proteomics |
 
 ## Notes
 
